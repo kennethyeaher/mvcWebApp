@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="430" viewBox="0 0 1440 430" role="img" aria-labelledby="title desc">
+<title id="title">Restaurant Finder</title>
+<desc id="desc">Find your next table. A small restaurant guide built with HTML, CSS, JavaScript, and MVC.</desc>
+<rect width="1440" height="430" fill="#203e36"/>
+<path d="M72 70H1368M72 358H1368M1040 110V316" stroke="#a4afa7" stroke-width="1"/>
+<g fill="#f7f5ef">
+<text x="72" y="133" font-family="Arial, sans-serif" font-size="18" letter-spacing="3">RESTAURANT FINDER</text>
+<text x="68" y="224" font-family="Georgia, serif" font-size="78">Find your next table.</text>
+<text x="72" y="278" font-family="Arial, sans-serif" font-size="24">A small guide. Clear choices. Separate responsibilities.</text>
+<text x="1090" y="159" font-family="Georgia, serif" font-size="28">Model</text>
+<text x="1090" y="214" font-family="Georgia, serif" font-size="28">View</text>
+<text x="1090" y="269" font-family="Georgia, serif" font-size="28">Controller</text>
+<text x="72" y="394" font-family="Arial, sans-serif" font-size="15" letter-spacing="2">HTML / CSS / JAVASCRIPT</text>
+<text x="1368" y="394" text-anchor="end" font-family="Arial, sans-serif" font-size="15">INST 630 · Kenneth Yeaher</text>
+</g></svg>
