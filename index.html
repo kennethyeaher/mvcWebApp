@@ -3,23 +3,47 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Restaurant MVC Demo</title>
+  <meta name="description" content="Explore a small restaurant list by cuisine, price, and rating. A vanilla JavaScript MVC exercise.">
+  <title>Restaurant Finder</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="model.js" defer></script>
+  <script src="view.js" defer></script>
+  <script src="controller.js" defer></script>
 </head>
 <body>
-  <header>
-    <h1>Restaurant Finder</h1>
-    <p>A simple MVC example</p>
+  <a class="skip-link" href="#main">Skip to restaurant finder</a>
+  <header class="site-header">
+    <p class="wordmark">Restaurant Finder</p>
+    <p>A small guide to good food.</p>
   </header>
-
-  <main>
-    <button id="showAll">Show All Restaurants</button>
-    <button id="showTopRated">Show Top Rated</button>
-    <div id="restaurantList"></div>
+  <main id="main">
+    <section class="finder" aria-labelledby="pageTitle">
+      <h1 id="pageTitle">Find your next table.</h1>
+      <p class="intro">Choose a cuisine, set your budget, and see what fits.</p>
+      <div class="controls">
+        <div class="filter-buttons" role="group" aria-label="Restaurant filters">
+          <button id="showAll" type="button" aria-pressed="true">Show All</button>
+          <button id="showTopRated" type="button" aria-pressed="false">Show Top Rated</button>
+          <button id="showInexpensive" type="button" aria-pressed="false">Show Inexpensive</button>
+        </div>
+        <div class="cuisine-field">
+          <label for="cuisineFilter">Cuisine</label>
+          <select id="cuisineFilter"><option value="">All cuisines</option></select>
+        </div>
+      </div>
+    </section>
+    <section class="results" aria-labelledby="resultsTitle">
+      <div class="results-heading">
+        <h2 id="resultsTitle">The restaurant list</h2>
+        <p id="resultCount" role="status" aria-live="polite" aria-atomic="true"></p>
+      </div>
+      <noscript><p>Please enable JavaScript to display and filter the restaurant list.</p></noscript>
+      <div id="restaurantList" class="restaurant-list"></div>
+    </section>
   </main>
-
-  <script src="model.js"></script>
-  <script src="view.js"></script>
-  <script src="controller.js"></script>
+  <footer>
+    <p>$ Inexpensive · $$ Moderate · $$$ Expensive</p>
+    <p>Sample restaurants for an MVC exercise.</p>
+  </footer>
 </body>
 </html>
