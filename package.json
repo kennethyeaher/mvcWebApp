@@ -1,12 +1,16 @@
 {
   "name": "restaurant-finder-mvc",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Restaurant finder and MVC coursework checks",
   "scripts": {
-    "check": "node --check model.js && node --check view.js && node --check controller.js && node --check tests/model.test.cjs && node --check tests/browser.test.cjs",
+    "check": "node --check model.js && node --check persistence.js && node --check query-state.js && node --check view.js && node --check controller.js && node --check tests/model.test.cjs && node --check tests/adapters.test.cjs && node --check tests/browser.test.cjs",
     "test": "node --test tests/*.test.cjs"
   },
-  "engines": { "node": ">=22" },
-  "devDependencies": { "playwright": "1.62.1" }
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
 }

@@ -13,8 +13,9 @@ test("restaurant finder browser workflows", async (t) => {
     const path = require('node:path');
     const types = {'.html':'text/html', '.css':'text/css', '.js':'text/javascript'};
     http.createServer((req, res) => {
-      const name = req.url === '/' ? 'index.html' : req.url.slice(1);
-      if (!['index.html','styles.css','model.js','view.js','controller.js'].includes(name)) {
+      const pathname = new URL(req.url, 'http://localhost').pathname;
+      const name = pathname === '/' ? 'index.html' : pathname.slice(1);
+      if (!['index.html','styles.css','model.js','view.js','controller.js','persistence.js','query-state.js'].includes(name)) {
         res.writeHead(404); res.end(); return;
       }
       res.setHeader('Content-Type', types[path.extname(name)]);
@@ -26,7 +27,8 @@ test("restaurant finder browser workflows", async (t) => {
   const url = `http://127.0.0.1:${String(output).trim()}`;
   const browser = await chromium.launch({ channel: process.env.BROWSER_CHANNEL || undefined });
   t.after(() => browser.close());
-  const page = await browser.newPage();
+  const context = await browser.newContext();
+  const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
@@ -67,6 +69,8 @@ test("restaurant finder browser workflows", async (t) => {
     await page.keyboard.press("Tab");
     assert.equal(await page.locator(".skip-link").evaluate((element) => element === document.activeElement), true);
     await page.keyboard.press("Tab");
+    assert.equal(await page.locator("#restaurantSearch").evaluate((element) => element === document.activeElement), true);
+    await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
     await page.keyboard.press("Enter");
     assert.equal(await page.locator("#showTopRated").getAttribute("aria-pressed"), "true");
@@ -103,9 +107,124 @@ test("restaurant finder browser workflows", async (t) => {
     assert.equal(await cards.count(), 2);
     await page.goto(url);
   });
+  await t.test("live search sorting and reset work together", async () => {
+    await page.locator("#showAll").click();
+    await page.getByLabel("Search restaurants", {exact: true}).fill("  PHO  ");
+    assert.equal(await cards.count(), 1);
+    assert.equal(await cards.locator("h3").textContent(), "Pho Corner");
+    await page.getByLabel("Search restaurants", {exact: true}).fill("Japanese");
+    assert.equal(await cards.locator("h3").textContent(), "Sakura Sushi");
+    await page.locator("#showAll").click();
+    await page.getByLabel("Sort by", {exact: true}).selectOption("rating");
+    assert.equal(await cards.first().locator("h3").textContent(), "The Brass Elephant");
+    await page.getByLabel("Sort by", {exact: true}).selectOption("price");
+    assert.equal(await cards.first().locator("h3").textContent(), "Pho Corner");
+    await page.getByLabel("Search restaurants", {exact: true}).fill("missing place");
+    assert.equal(await cards.count(), 0);
+    await page.locator("#showAll").click();
+    assert.equal(await cards.count(), 5);
+    assert.equal(await page.locator("#restaurantSearch").inputValue(), "");
+    assert.equal(await page.locator("#sortOrder").inputValue(), "recommended");
+  });
+  await t.test("saved places persist sync across tabs and preserve keyboard focus", async () => {
+    await page.getByRole("button", {name: "Save Milano's", exact: true}).click();
+    assert.equal(await page.getByRole("button", {name: "Unsave Milano's", exact: true}).evaluate((element) => element === document.activeElement), true);
+    await page.reload();
+    assert.equal(await page.getByRole("button", {name: "Unsave Milano's", exact: true}).getAttribute("aria-pressed"), "true");
+    await page.locator("#savedOnly").check();
+    assert.equal(await cards.count(), 1);
+    await page.getByRole("button", {name: "Unsave Milano's", exact: true}).focus();
+    const other = await page.context().newPage();
+    await other.goto(url);
+    await other.getByRole("button", {name: "Save Pho Corner", exact: true}).click();
+    await page.waitForFunction(() => document.querySelector("#savedLabel").textContent === "Saved only (2)");
+    assert.equal(await cards.count(), 2);
+    assert.equal(await page.getByRole("button", {name: "Unsave Milano's", exact: true}).evaluate((element) => element === document.activeElement), true);
+    await other.close();
+    await page.getByRole("button", {name: "Unsave Milano's", exact: true}).click();
+    assert.equal(await page.locator("#savedOnly").evaluate((element) => element === document.activeElement), true);
+    await page.getByRole("button", {name: "Unsave Pho Corner", exact: true}).click();
+    assert.equal(await cards.count(), 0);
+    assert.equal(await page.evaluate(() => localStorage.getItem("restaurant-finder.saved.v1")), null);
+    await page.locator("#showAll").click();
+  });
+  await t.test("shared URLs restore filters and invalid choices use safe defaults", async () => {
+    await page.goto(`${url}/?cuisine=Italian&sort=rating&filter=topRated&q=Milano`);
+    assert.equal(await cards.count(), 1);
+    assert.equal(await page.locator("#restaurantSearch").inputValue(), "Milano");
+    assert.equal(await page.locator("#cuisineFilter").inputValue(), "Italian");
+    assert.equal(await page.locator("#showTopRated").getAttribute("aria-pressed"), "true");
+    await page.goto(`${url}/?sort=invalid&filter=bad&cuisine=Unknown`);
+    assert.equal(await cards.count(), 5);
+    assert.equal(await page.locator("#sortOrder").inputValue(), "recommended");
+    await page.evaluate(() => { history.pushState(null, "", "?cuisine=Indian"); window.dispatchEvent(new PopStateEvent("popstate")); });
+    assert.equal(await page.locator("#cuisineFilter").inputValue(), "Indian");
+    assert.equal(await cards.locator("h3").textContent(), "Tandoor Palace");
+    await page.locator("#showAll").click();
+  });
+  await t.test("copy links exclude saved places and denied clipboard offers a manual field", async () => {
+    await page.evaluate(() => Object.defineProperty(navigator, "clipboard", {configurable: true, value: { writeText: async (text) => { window.copiedSearchLink = text; } }}));
+    await page.getByRole("button", {name: "Save Milano's", exact: true}).click();
+    await page.locator("#savedOnly").check();
+    await page.locator("#sortOrder").selectOption("rating");
+    await page.locator("#shareSearch").click();
+    const copied = await page.evaluate(() => window.copiedSearchLink);
+    assert.ok(copied.includes("sort=rating"));
+    assert.ok(!copied.includes("milanos"));
+    assert.ok(!copied.includes("saved"));
+    await page.evaluate(() => Object.defineProperty(navigator, "clipboard", {configurable: true, value: { writeText: async () => { throw Error("denied"); } }}));
+    await page.locator("#shareSearch").click();
+    assert.equal(await page.locator("#shareLink").isVisible(), true);
+    assert.equal(await page.locator("#shareLink").inputValue(), copied);
+    assert.equal(await page.locator("#shareLink").evaluate((element) => element === document.activeElement), true);
+    await page.locator("#showAll").click();
+    assert.equal(await page.locator("#shareLink").isVisible(), false);
+    await page.getByRole("button", {name: "Unsave Milano's", exact: true}).click();
+  });
+  await t.test("delayed clipboard results never surface a stale link or steal focus", async () => {
+    for (const outcome of ["reject", "resolve"]) {
+      await page.goto(url);
+      await page.evaluate(() => Object.defineProperty(navigator, "clipboard", {configurable: true, value: {
+        writeText: () => new Promise((resolve, reject) => { window.finishCopy = {resolve, reject}; })
+      }}));
+      await page.locator("#shareSearch").click();
+      await page.locator("#restaurantSearch").fill("Pho");
+      await page.evaluate((method) => window.finishCopy[method](), outcome);
+      assert.equal(await page.locator("#shareLink").isVisible(), false);
+      assert.equal(await page.locator("#restaurantSearch").evaluate((element) => element === document.activeElement), true);
+      assert.ok(!(await page.locator("#actionStatus").textContent()).includes("copied"));
+    }
+    await page.goto(url);
+  });
+  await t.test("blocked storage still permits saving for the current visit", async () => {
+    const context = await browser.newContext();
+    await context.addInitScript(() => Object.defineProperty(window, "localStorage", {get() { throw Error("blocked"); }}));
+    const blocked = await context.newPage();
+    const failures = [];
+    blocked.on("pageerror", (error) => failures.push(error.message));
+    await blocked.goto(url);
+    await blocked.getByRole("button", {name: "Save Pho Corner", exact: true}).click();
+    await blocked.locator("#savedOnly").check();
+    assert.equal(await blocked.locator(".restaurant-card").count(), 1);
+    assert.match(await blocked.locator("#actionStatus").textContent(), /visit only/);
+    assert.deepEqual(failures, []);
+    await context.close();
+  });
+  await t.test("corrupt or unknown saved data cannot inject records", async () => {
+    for (const raw of ['{broken', JSON.stringify({version: 1, ids: ["milanos", "<script>", "unknown"]})]) {
+      await page.evaluate((value) => localStorage.setItem("restaurant-finder.saved.v1", value), raw);
+      await page.reload();
+      assert.equal(await cards.count(), 5);
+      await page.locator("#savedOnly").check();
+      assert.equal(await cards.count(), raw === '{broken' ? 0 : 1);
+    }
+    await page.evaluate(() => localStorage.removeItem("restaurant-finder.saved.v1"));
+    await page.goto(url);
+  });
   if (process.env.CAPTURE_SCREENSHOTS === "1") {
     const fs = require("node:fs");
     fs.mkdirSync("docs/assets", {recursive: true});
+    await page.getByRole("button", {name: "Save Pho Corner", exact: true}).click();
     await page.setViewportSize({width: 1440, height: 1000});
     await page.screenshot({path: "docs/assets/preview-desktop.png", fullPage: true});
     await page.setViewportSize({width: 375, height: 900});
