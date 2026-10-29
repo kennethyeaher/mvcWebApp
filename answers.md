@@ -48,4 +48,4 @@ showTopRatedButton.addEventListener("click", function () {
 });
 ```
 
-The submitted app keeps this rule in the same Model method. Its Controller also tracks cuisine and passes both selections to getFilteredRestaurants(), which combines the filters in the Model.
+The submitted app keeps this rule in the same Model method. Its Controller tracks the current choices and passes them to findRestaurants(), which reuses getFilteredRestaurants() in the Model. Search, sorting, and saved-only filtering also remain in the Model; the Controller coordinates the browser adapters and View.
