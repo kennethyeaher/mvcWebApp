@@ -8,6 +8,8 @@
   <title>Restaurant Finder</title>
   <link rel="stylesheet" href="styles.css">
   <script src="model.js" defer></script>
+  <script src="persistence.js" defer></script>
+  <script src="query-state.js" defer></script>
   <script src="view.js" defer></script>
   <script src="controller.js" defer></script>
 </head>
@@ -21,6 +23,10 @@
     <section class="finder" aria-labelledby="pageTitle">
       <h1 id="pageTitle">Find your next table.</h1>
       <p class="intro">Choose a cuisine, set your budget, and see what fits.</p>
+      <div class="search-field">
+        <label for="restaurantSearch">Search restaurants</label>
+        <input id="restaurantSearch" type="search" maxlength="120" placeholder="Try a name or cuisine" autocomplete="off" aria-controls="restaurantList">
+      </div>
       <div class="controls">
         <div class="filter-buttons" role="group" aria-label="Restaurant filters">
           <button id="showAll" type="button" aria-pressed="true">Show All</button>
@@ -32,11 +38,33 @@
           <select id="cuisineFilter"><option value="">All cuisines</option></select>
         </div>
       </div>
+      <div class="list-tools">
+        <label class="saved-toggle" for="savedOnly"><input type="checkbox" id="savedOnly"> <span id="savedLabel">Saved only (0)</span></label>
+        <button id="shareSearch" class="text-button" type="button">Copy search link</button>
+      </div>
+      <p class="privacy-note">Saved places stay in this browser. Search links include filters, not your saved list.</p>
+      <p id="actionStatus" class="action-status" role="status" aria-live="polite" aria-atomic="true"></p>
+      <div id="shareFallback" class="share-fallback" hidden>
+        <label for="shareLink">Copy this search link</label>
+        <input id="shareLink" type="url" readonly>
+      </div>
     </section>
     <section class="results" aria-labelledby="resultsTitle">
       <div class="results-heading">
         <h2 id="resultsTitle">The restaurant list</h2>
         <p id="resultCount" role="status" aria-live="polite" aria-atomic="true"></p>
+      </div>
+      <div class="results-toolbar">
+        <p class="list-note">A shortlist for your next meal. Save the places you want to come back to.</p>
+        <div class="sort-field">
+          <label for="sortOrder">Sort by</label>
+          <select id="sortOrder">
+            <option value="recommended">Original order</option>
+            <option value="rating">Highest rated</option>
+            <option value="price">Price: low to high</option>
+            <option value="name">Name: A to Z</option>
+          </select>
+        </div>
       </div>
       <noscript><p>Please enable JavaScript to display and filter the restaurant list.</p></noscript>
       <div id="restaurantList" class="restaurant-list"></div>
